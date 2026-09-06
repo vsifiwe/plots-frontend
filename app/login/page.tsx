@@ -47,7 +47,7 @@ export default function LoginPage() {
     setSubmitting(true)
     try {
       await signIn(trimmedIdentifier, password)
-      router.replace("/member")
+      router.replace("/dashboard")
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setError(caughtError.message)

@@ -1,7 +1,26 @@
 export type Member = {
   id: number
+  full_name: string
   email: string | null
   phone: string | null
+  role: "member" | "steward"
+  can_manage_members: boolean
+}
+
+export type DirectoryMember = {
+  id: number
+  full_name: string
+  role: "member" | "steward"
+  is_active: boolean
+  date_joined: string
+}
+
+export type NewMember = {
+  full_name: string
+  email?: string
+  phone?: string
+  password: string
+  password_confirmation: string
 }
 
 type StoredSession = {
@@ -24,7 +43,8 @@ const apiBaseUrl = (
 export class ApiError extends Error {
   constructor(
     message: string,
-    public readonly status: number
+    public readonly status: number,
+    public readonly fieldErrors: Record<string, string> = {}
   ) {
     super(message)
     this.name = "ApiError"
@@ -77,15 +97,28 @@ function messageFromResponse(payload: unknown, fallback: string) {
     return data.detail
   }
 
-  const identifierErrors = data.identifier
-  if (
-    Array.isArray(identifierErrors) &&
-    typeof identifierErrors[0] === "string"
-  ) {
-    return identifierErrors[0]
+  for (const value of Object.values(data)) {
+    if (Array.isArray(value) && typeof value[0] === "string") {
+      return value[0]
+    }
   }
 
   return fallback
+}
+
+function fieldErrorsFromResponse(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(payload as Record<string, unknown>).flatMap(
+      ([key, value]) =>
+        Array.isArray(value) && typeof value[0] === "string"
+          ? [[key, value[0]]]
+          : []
+    )
+  )
 }
 
 async function errorFromResponse(response: Response, fallback: string) {
@@ -97,7 +130,11 @@ async function errorFromResponse(response: Response, fallback: string) {
     payload = null
   }
 
-  return new ApiError(messageFromResponse(payload, fallback), response.status)
+  return new ApiError(
+    messageFromResponse(payload, fallback),
+    response.status,
+    fieldErrorsFromResponse(payload)
+  )
 }
 
 export async function signIn(identifier: string, password: string) {
@@ -193,6 +230,30 @@ export async function getCurrentMember() {
     throw await errorFromResponse(response, "Unable to load your member space.")
   }
   return (await response.json()) as Member
+}
+
+export async function listMembers() {
+  const response = await authenticatedFetch("/api/members/")
+  if (!response.ok) {
+    throw await errorFromResponse(
+      response,
+      "Unable to load the member directory."
+    )
+  }
+  return (await response.json()) as DirectoryMember[]
+}
+
+export async function createMember(member: NewMember) {
+  const response = await authenticatedFetch("/api/members/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(member),
+  })
+
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to create this member.")
+  }
+  return (await response.json()) as DirectoryMember
 }
 
 export async function signOut() {

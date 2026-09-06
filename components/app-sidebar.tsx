@@ -1,203 +1,140 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import {
+  BookOpenTextIcon,
+  ChartNoAxesCombinedIcon,
+  CircleHelpIcon,
+  HandCoinsIcon,
+  LayoutDashboardIcon,
+  SproutIcon,
+  UsersRoundIcon,
+  VoteIcon,
+} from "lucide-react"
 
-import { NavDocuments } from "@/components/nav-documents"
-import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon } from "lucide-react"
+import type { Member } from "@/lib/auth"
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "#",
-      icon: (
-        <LayoutDashboardIcon
-        />
-      ),
-    },
-    {
-      title: "Lifecycle",
-      url: "#",
-      icon: (
-        <ListIcon
-        />
-      ),
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: (
-        <ChartBarIcon
-        />
-      ),
-    },
-    {
-      title: "Projects",
-      url: "#",
-      icon: (
-        <FolderIcon
-        />
-      ),
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: (
-        <UsersIcon
-        />
-      ),
-    },
-  ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: (
-        <CameraIcon
-        />
-      ),
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: (
-        <FileTextIcon
-        />
-      ),
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: (
-        <FileTextIcon
-        />
-      ),
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: (
-        <Settings2Icon
-        />
-      ),
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: (
-        <CircleHelpIcon
-        />
-      ),
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: (
-        <SearchIcon
-        />
-      ),
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: (
-        <DatabaseIcon
-        />
-      ),
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: (
-        <FileChartColumnIcon
-        />
-      ),
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: (
-        <FileIcon
-        />
-      ),
-    },
-  ],
-}
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+const memberTools = [
+  { title: "Overview", icon: LayoutDashboardIcon, href: "/dashboard" },
+  { title: "Savings", icon: HandCoinsIcon },
+  { title: "Investment cycle", icon: VoteIcon },
+  { title: "Proposals", icon: ChartNoAxesCombinedIcon },
+  { title: "Members", icon: UsersRoundIcon, href: "/dashboard/members" },
+]
+
+const resources = [
+  { title: "Shared principles", icon: BookOpenTextIcon },
+  { title: "Get help", icon: CircleHelpIcon },
+]
+
+export function AppSidebar({
+  member,
+  onSignOut,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  member: Member
+  onSignOut: () => Promise<void>
+}) {
+  const pathname = usePathname()
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
-              render={<a href="#" />}
-            >
-              <CommandIcon className="size-5!" />
-              <span className="text-base font-semibold">Acme Inc.</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader className="border-sidebar-border/70 border-b px-3 py-3">
+        <div className="flex items-center gap-2.5 px-2 py-1">
+          <span className="grid size-8 place-items-center rounded-[10px] bg-primary text-primary-foreground shadow-sm">
+            <SproutIcon
+              aria-hidden="true"
+              className="size-4"
+              strokeWidth={1.8}
+            />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold tracking-[-0.03em]">
+              Plots &amp; Prosper
+            </p>
+            <p className="text-sidebar-foreground/55 text-[11px] font-medium tracking-[0.1em] uppercase">
+              Member space
+            </p>
+          </div>
+        </div>
       </SidebarHeader>
+
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <SidebarGroup>
+          <SidebarGroupLabel>Your collective</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {memberTools.map((item) => {
+                const Icon = item.icon
+                const isActive = item.href === pathname
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      render={item.href ? <Link href={item.href} /> : undefined}
+                      isActive={isActive}
+                      tooltip={item.title}
+                      aria-current={isActive ? "page" : undefined}
+                      className={
+                        !item.href
+                          ? "text-sidebar-foreground/70 cursor-default"
+                          : undefined
+                      }
+                    >
+                      <Icon aria-hidden="true" />
+                      <span>{item.title}</span>
+                      {!item.href && (
+                        <span className="text-sidebar-foreground/45 ml-auto text-[10px] font-medium">
+                          Soon
+                        </span>
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupLabel>Resources</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {resources.map((item) => {
+                const Icon = item.icon
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      tooltip={item.title}
+                      className="text-sidebar-foreground/70 cursor-default"
+                    >
+                      <Icon aria-hidden="true" />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
+
+      <SidebarFooter className="border-sidebar-border/70 border-t p-2">
+        <NavUser member={member} onSignOut={onSignOut} />
       </SidebarFooter>
     </Sidebar>
   )

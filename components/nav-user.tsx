@@ -1,14 +1,11 @@
 "use client"
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { useState } from "react"
+import { LoaderCircleIcon, LogOutIcon, SproutIcon } from "lucide-react"
+
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -20,84 +17,71 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { EllipsisVerticalIcon, CircleUserRoundIcon, CreditCardIcon, BellIcon, LogOutIcon } from "lucide-react"
+import type { Member } from "@/lib/auth"
 
 export function NavUser({
-  user,
+  member,
+  onSignOut,
 }: {
-  user: {
-    name: string
-    email: string
-    avatar: string
-  }
+  member: Member
+  onSignOut: () => Promise<void>
 }) {
   const { isMobile } = useSidebar()
+  const [isSigningOut, setSigningOut] = useState(false)
+  const identifier = member.email ?? member.phone ?? "Private member"
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    await onSignOut()
+  }
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <SidebarMenuButton size="lg" className="aria-expanded:bg-muted" />
+              <SidebarMenuButton
+                size="lg"
+                className="aria-expanded:bg-sidebar-accent"
+              />
             }
           >
-            <Avatar className="size-8 rounded-lg grayscale">
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback className="rounded-lg">CN</AvatarFallback>
-            </Avatar>
+            <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
+              <SproutIcon aria-hidden="true" className="size-4" />
+            </span>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{user.name}</span>
-              <span className="truncate text-xs text-foreground/70">
-                {user.email}
+              <span className="truncate font-medium">{member.full_name}</span>
+              <span className="text-sidebar-foreground/60 truncate text-xs">
+                {identifier}
               </span>
             </div>
-            <EllipsisVerticalIcon className="ml-auto size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="min-w-56"
+            className="min-w-60"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
           >
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="p-0 font-normal">
-                <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                  <Avatar className="size-8">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{user.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {user.email}
-                    </span>
-                  </div>
-                </div>
-              </DropdownMenuLabel>
-            </DropdownMenuGroup>
+            <DropdownMenuLabel className="font-normal">
+              <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                Signed in as
+              </p>
+              <p className="mt-1.5 truncate text-sm font-medium text-foreground">
+                {member.full_name}
+              </p>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {identifier}
+              </p>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <CircleUserRoundIcon
-                />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCardIcon
-                />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BellIcon
-                />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOutIcon
-              />
-              Log out
+            <DropdownMenuItem disabled={isSigningOut} onClick={handleSignOut}>
+              {isSigningOut ? (
+                <LoaderCircleIcon className="animate-spin" />
+              ) : (
+                <LogOutIcon />
+              )}
+              {isSigningOut ? "Signing out..." : "Log out"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
