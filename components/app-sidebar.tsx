@@ -9,6 +9,7 @@ import {
   CircleHelpIcon,
   HandCoinsIcon,
   LayoutDashboardIcon,
+  ReceiptTextIcon,
   SproutIcon,
   UsersRoundIcon,
   VoteIcon,
@@ -32,6 +33,11 @@ import type { Member } from "@/lib/auth"
 const memberTools = [
   { title: "Overview", icon: LayoutDashboardIcon, href: "/dashboard" },
   { title: "Savings", icon: HandCoinsIcon },
+  {
+    title: "Contributions",
+    icon: ReceiptTextIcon,
+    href: "/dashboard/contributions",
+  },
   { title: "Investment cycle", icon: VoteIcon },
   { title: "Proposals", icon: ChartNoAxesCombinedIcon },
   { title: "Members", icon: UsersRoundIcon, href: "/dashboard/members" },

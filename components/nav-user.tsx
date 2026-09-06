@@ -6,6 +6,7 @@ import { LoaderCircleIcon, LogOutIcon, SproutIcon } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -63,17 +64,19 @@ export function NavUser({
             align="end"
             sideOffset={4}
           >
-            <DropdownMenuLabel className="font-normal">
-              <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                Signed in as
-              </p>
-              <p className="mt-1.5 truncate text-sm font-medium text-foreground">
-                {member.full_name}
-              </p>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {identifier}
-              </p>
-            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="font-normal">
+                <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                  Signed in as
+                </p>
+                <p className="mt-1.5 truncate text-sm font-medium text-foreground">
+                  {member.full_name}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {identifier}
+                </p>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={isSigningOut} onClick={handleSignOut}>
               {isSigningOut ? (

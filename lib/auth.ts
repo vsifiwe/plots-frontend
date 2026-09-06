@@ -23,6 +23,41 @@ export type NewMember = {
   password_confirmation: string
 }
 
+export type ContributionStatus = "recorded" | "voided"
+
+export type ContributionMember = {
+  id: number
+  full_name: string
+}
+
+export type Contribution = {
+  id: number
+  member?: ContributionMember
+  amount: number
+  received_on: string
+  status: ContributionStatus
+  note?: string
+  recorded_by?: ContributionMember | null
+  created_at: string
+  voided_at: string | null
+  void_reason?: string | null
+  voided_by?: ContributionMember | null
+}
+
+export type PaginatedContributions = {
+  count: number
+  next: string | null
+  previous: string | null
+  results: Contribution[]
+}
+
+export type NewContribution = {
+  member: number
+  amount: number
+  received_on: string
+  note?: string
+}
+
 type StoredSession = {
   access: string
   refresh: string
@@ -254,6 +289,46 @@ export async function createMember(member: NewMember) {
     throw await errorFromResponse(response, "Unable to create this member.")
   }
   return (await response.json()) as DirectoryMember
+}
+
+export async function listContributions(page = 1) {
+  const response = await authenticatedFetch(`/api/contributions/?page=${page}`)
+  if (!response.ok) {
+    throw await errorFromResponse(
+      response,
+      "Unable to load contribution records."
+    )
+  }
+  return (await response.json()) as PaginatedContributions
+}
+
+export async function createContribution(contribution: NewContribution) {
+  const response = await authenticatedFetch("/api/contributions/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(contribution),
+  })
+
+  if (!response.ok) {
+    throw await errorFromResponse(
+      response,
+      "Unable to record this contribution."
+    )
+  }
+  return (await response.json()) as Contribution
+}
+
+export async function voidContribution(id: number, reason: string) {
+  const response = await authenticatedFetch(`/api/contributions/${id}/void/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to void this contribution.")
+  }
+  return (await response.json()) as Contribution
 }
 
 export async function signOut() {
