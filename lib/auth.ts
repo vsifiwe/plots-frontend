@@ -1,0 +1,212 @@
+export type Member = {
+  id: number
+  email: string | null
+  phone: string | null
+}
+
+type StoredSession = {
+  access: string
+  refresh: string
+  user: Member
+}
+
+type TokenResponse = {
+  access: string
+  refresh?: string
+  user?: Member
+}
+
+const storageKey = "plots-and-prosper-session"
+const apiBaseUrl = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
+).replace(/\/$/, "")
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message)
+    this.name = "ApiError"
+  }
+}
+
+function apiUrl(path: string) {
+  return `${apiBaseUrl}${path}`
+}
+
+function getStoredSession(): StoredSession | null {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  const value = window.localStorage.getItem(storageKey)
+  if (!value) {
+    return null
+  }
+
+  try {
+    const session = JSON.parse(value) as StoredSession
+    if (!session.access || !session.refresh || !session.user) {
+      throw new Error("Invalid stored session")
+    }
+    return session
+  } catch {
+    clearSession()
+    return null
+  }
+}
+
+function storeSession(session: StoredSession) {
+  window.localStorage.setItem(storageKey, JSON.stringify(session))
+}
+
+export function clearSession() {
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(storageKey)
+  }
+}
+
+function messageFromResponse(payload: unknown, fallback: string) {
+  if (!payload || typeof payload !== "object") {
+    return fallback
+  }
+
+  const data = payload as Record<string, unknown>
+  if (typeof data.detail === "string") {
+    return data.detail
+  }
+
+  const identifierErrors = data.identifier
+  if (
+    Array.isArray(identifierErrors) &&
+    typeof identifierErrors[0] === "string"
+  ) {
+    return identifierErrors[0]
+  }
+
+  return fallback
+}
+
+async function errorFromResponse(response: Response, fallback: string) {
+  let payload: unknown
+
+  try {
+    payload = await response.json()
+  } catch {
+    payload = null
+  }
+
+  return new ApiError(messageFromResponse(payload, fallback), response.status)
+}
+
+export async function signIn(identifier: string, password: string) {
+  const response = await fetch(apiUrl("/api/auth/login/"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier, password }),
+  })
+
+  if (!response.ok) {
+    throw await errorFromResponse(
+      response,
+      "Unable to sign in with those details."
+    )
+  }
+
+  const data = (await response.json()) as TokenResponse
+  if (!data.access || !data.refresh || !data.user) {
+    throw new ApiError("The sign-in response was incomplete.", response.status)
+  }
+
+  storeSession({ access: data.access, refresh: data.refresh, user: data.user })
+  return data.user
+}
+
+async function refreshAccessToken() {
+  const session = getStoredSession()
+  if (!session) {
+    return false
+  }
+
+  const response = await fetch(apiUrl("/api/auth/refresh/"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh: session.refresh }),
+  })
+
+  if (!response.ok) {
+    clearSession()
+    return false
+  }
+
+  const data = (await response.json()) as TokenResponse
+  if (!data.access) {
+    clearSession()
+    return false
+  }
+
+  storeSession({
+    ...session,
+    access: data.access,
+    refresh: data.refresh ?? session.refresh,
+  })
+  return true
+}
+
+export async function authenticatedFetch(path: string, init: RequestInit = {}) {
+  const session = getStoredSession()
+  if (!session) {
+    throw new ApiError("Your session has ended. Please sign in again.", 401)
+  }
+
+  const request = (access: string) => {
+    const headers = new Headers(init.headers)
+    headers.set("Authorization", `Bearer ${access}`)
+    return fetch(apiUrl(path), { ...init, headers })
+  }
+
+  let response = await request(session.access)
+  if (response.status !== 401) {
+    return response
+  }
+
+  if (!(await refreshAccessToken())) {
+    throw new ApiError("Your session has ended. Please sign in again.", 401)
+  }
+
+  const refreshedSession = getStoredSession()
+  if (!refreshedSession) {
+    throw new ApiError("Your session has ended. Please sign in again.", 401)
+  }
+
+  response = await request(refreshedSession.access)
+  if (response.status === 401) {
+    clearSession()
+  }
+  return response
+}
+
+export async function getCurrentMember() {
+  const response = await authenticatedFetch("/api/auth/me/")
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to load your member space.")
+  }
+  return (await response.json()) as Member
+}
+
+export async function signOut() {
+  const session = getStoredSession()
+
+  try {
+    if (session) {
+      await fetch(apiUrl("/api/auth/logout/"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh: session.refresh }),
+      })
+    }
+  } finally {
+    clearSession()
+  }
+}
