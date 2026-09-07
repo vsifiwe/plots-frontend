@@ -259,7 +259,7 @@ export function AssetCommitmentDrawer({
           )
         }
       />
-      <DrawerContent className="sm:max-w-xl">
+      <DrawerContent className="sm:[--drawer-content-width:75vw] xl:[--drawer-content-width:56rem] sm:max-w-none">
         <DrawerHeader className="gap-2">
           <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <LandmarkIcon aria-hidden="true" className="size-4" />
@@ -369,7 +369,7 @@ export function AssetCommitmentDrawer({
                   return (
                     <div
                       key={commitment.key}
-                      className="grid gap-3 rounded-md border bg-card p-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto] sm:items-end"
+                      className="grid gap-3 rounded-md border bg-card p-3"
                     >
                       <div className="grid gap-2">
                         <Label htmlFor={`asset-member-${commitment.key}`}>
@@ -449,6 +449,7 @@ export function AssetCommitmentDrawer({
                         type="button"
                         variant="ghost"
                         size="icon-sm"
+                        className="justify-self-end"
                         disabled={form.commitments.length === 1}
                         onClick={() => removeCommitment(commitment.key)}
                         aria-label={`Remove member ${index + 1}`}
