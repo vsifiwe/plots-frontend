@@ -10,22 +10,27 @@ export function SiteHeader() {
   const isMemberDirectory = pathname === "/dashboard/members"
   const isContributions = pathname === "/dashboard/contributions"
   const isAssets = pathname.startsWith("/dashboard/assets")
+  const isSavings = pathname === "/dashboard/savings"
 
   const title = isMemberDirectory
     ? "Member directory"
     : isContributions
       ? "Contribution ledger"
-      : isAssets
+    : isAssets
         ? "Collective assets"
+        : isSavings
+          ? "RNIT savings"
       : "Collective overview"
   const description = isMemberDirectory
     ? "A private view of everyone in the collective"
     : isContributions
       ? "Recorded member contributions to the collective"
-      : isAssets
+    : isAssets
         ? "Assets covered by member contribution commitments"
+        : isSavings
+          ? "Member-owned RNIT units and current value"
       : "A shared snapshot for Plots & Prosper members"
-  const isPrivate = isMemberDirectory || isContributions || isAssets
+  const isPrivate = isMemberDirectory || isContributions || isAssets || isSavings
 
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">

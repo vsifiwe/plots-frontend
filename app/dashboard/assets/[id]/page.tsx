@@ -44,6 +44,7 @@ import {
   cancelAsset,
   getAsset,
   openAsset,
+  reopenAsset,
   type Asset,
   type AssetFundingIssue,
   type AssetStatus,
@@ -94,12 +95,39 @@ function FundingIssue({ issue }: { issue: AssetFundingIssue }) {
     )
   }
 
+  if (issue.type === "nav_required") {
+    return <li>{issue.message}</li>
+  }
+
   return (
     <li>
       {issue.member.full_name} needs {formatRwf(issue.required)} but has
       {" "}{formatRwf(issue.available_balance)} available.
     </li>
   )
+}
+
+function ReopenAssetDrawer({ asset, onReopened }: { asset: Asset; onReopened: (asset: Asset) => void }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState("")
+  const [error, setError] = useState("")
+  const [isSubmitting, setSubmitting] = useState(false)
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!reason.trim()) { setError("Enter a reason for reopening this asset."); return }
+    setSubmitting(true)
+    try {
+      const reopened = await reopenAsset(asset.id, reason.trim())
+      onReopened(reopened)
+      toast.add({ type: "success", title: "Asset reopened", description: "Its prior reservations were released so the draft can be revised." })
+      setOpen(false); setReason(""); setError("")
+    } catch (caughtError) {
+      setError(caughtError instanceof ApiError ? caughtError.message : "We could not reopen this asset. Please try again.")
+    } finally { setSubmitting(false) }
+  }
+
+  return <Drawer open={open} onOpenChange={setOpen} swipeDirection="right"><DrawerTrigger render={<Button variant="outline" size="lg" />}><PencilIcon aria-hidden="true" />Reopen to revise</DrawerTrigger><DrawerContent className="sm:max-w-md"><DrawerHeader className="gap-2"><div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><PencilIcon aria-hidden="true" className="size-4" /></div><DrawerTitle className="text-xl tracking-[-0.03em]">Reopen {asset.title}</DrawerTitle><DrawerDescription>This releases the current cash and unit reservations, then returns the asset to a private editable draft.</DrawerDescription></DrawerHeader><form className="min-h-0 overflow-y-auto px-4 pb-4" onSubmit={submit} noValidate><div className="grid gap-2"><Label htmlFor="asset-reopen-reason">Reason for revision</Label><textarea id="asset-reopen-reason" rows={4} value={reason} onChange={(event) => { setReason(event.target.value); setError("") }} className="flex w-full resize-y rounded-md border border-input bg-transparent px-2.5 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30" aria-invalid={Boolean(error)} />{error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}</div><DrawerFooter className="px-0 pt-6"><Button type="submit" size="lg" disabled={isSubmitting}>{isSubmitting ? <LoaderCircleIcon aria-hidden="true" className="animate-spin" /> : <PencilIcon aria-hidden="true" />}{isSubmitting ? "Reopening…" : "Reopen asset"}</Button><DrawerClose render={<Button type="button" variant="outline" size="lg" />}>Keep asset open</DrawerClose></DrawerFooter></form></DrawerContent></Drawer>
 }
 
 function CancelAssetDrawer({
@@ -272,7 +300,7 @@ export default function AssetDetailPage() {
     try {
       const acquired = await acquireAsset(asset.id)
       setAsset(acquired)
-      toast.add({ type: "success", title: "Asset marked acquired", description: "Member commitments remain reserved." })
+      toast.add({ type: "success", title: "Asset marked acquired", description: "Reserved cash and RNIT units have been redeemed." })
     } catch (caughtError) {
       toast.add({ type: "error", title: "Unable to update asset", description: caughtError instanceof ApiError ? caughtError.message : "Please try again." })
     } finally {
@@ -309,6 +337,7 @@ export default function AssetDetailPage() {
                 {asset.status === "draft" ? <AssetCommitmentDrawer asset={asset} onSaved={setAsset} trigger={<Button size="lg"><PencilIcon aria-hidden="true" />Edit draft</Button>} /> : null}
                 {asset.status === "draft" ? <Button size="lg" onClick={() => void markOpen()} disabled={isActing}>{isActing ? <LoaderCircleIcon aria-hidden="true" className="animate-spin" /> : <CheckCircle2Icon aria-hidden="true" />}Open asset</Button> : null}
                 {asset.status === "open" ? <Button size="lg" onClick={() => void markAcquired()} disabled={isActing}>{isActing ? <LoaderCircleIcon aria-hidden="true" className="animate-spin" /> : <CheckCircle2Icon aria-hidden="true" />}Mark acquired</Button> : null}
+                {asset.status === "open" ? <ReopenAssetDrawer asset={asset} onReopened={setAsset} /> : null}
                 {(asset.status === "draft" || asset.status === "open") ? <CancelAssetDrawer asset={asset} onCancelled={setAsset} /> : null}
               </div>
             ) : null}
@@ -331,14 +360,14 @@ export default function AssetDetailPage() {
       {commitment ? (
         <section className="rounded-xl border bg-card p-5 shadow-xs sm:p-6" aria-labelledby="your-commitment-heading">
           <div className="flex items-start gap-3"><span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary"><LandmarkIcon aria-hidden="true" className="size-4" /></span><div><h2 id="your-commitment-heading" className="font-semibold">Your planned participation</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">This is the commitment recorded in your name. Other members’ individual commitments remain private.</p></div></div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-3"><div><p className="text-sm text-muted-foreground">Commitment</p><p className="mt-1 font-mono text-lg font-semibold tabular-nums">{formatRwf(commitment.amount)}</p></div><div><p className="text-sm text-muted-foreground">Planned ownership</p><p className="mt-1 font-mono text-lg font-semibold tabular-nums">{commitment.ownership_percentage}%</p></div><div><p className="text-sm text-muted-foreground">Reservation</p><p className="mt-1 font-medium">{commitment.is_reserved ? "Reserved" : "Not reserved"}</p></div></div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-4"><div><p className="text-sm text-muted-foreground">Commitment</p><p className="mt-1 font-mono text-lg font-semibold tabular-nums">{formatRwf(commitment.amount)}</p></div><div><p className="text-sm text-muted-foreground">Planned ownership</p><p className="mt-1 font-mono text-lg font-semibold tabular-nums">{commitment.ownership_percentage}%</p></div><div><p className="text-sm text-muted-foreground">Cash reserved</p><p className="mt-1 font-mono text-lg font-semibold tabular-nums">{formatRwf(commitment.reserved_cash)}</p></div><div><p className="text-sm text-muted-foreground">Units reserved</p><p className="mt-1 font-mono text-lg font-semibold tabular-nums">{Number(commitment.reserved_units).toLocaleString("en-RW", { maximumFractionDigits: 4 })}</p></div></div>
         </section>
       ) : null}
 
       {isSteward ? (
         <section className="rounded-xl border bg-card shadow-xs" aria-labelledby="commitments-heading">
           <div className="border-b p-5 sm:p-6"><div className="flex items-start gap-3"><ShieldCheckIcon aria-hidden="true" className="mt-0.5 size-4 text-primary" /><div><h2 id="commitments-heading" className="font-semibold">Steward commitment register</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">Individual balances and commitments are visible only to stewards.</p></div></div></div>
-          <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead className="pl-6">Member</TableHead><TableHead>Commitment</TableHead><TableHead>Planned ownership</TableHead><TableHead>Reservation</TableHead></TableRow></TableHeader><TableBody>{asset.commitments?.map((item) => <TableRow key={item.id}><TableCell className="pl-6 font-medium">{item.member.full_name}</TableCell><TableCell className="font-mono tabular-nums">{formatRwf(item.amount)}</TableCell><TableCell className="font-mono tabular-nums">{item.ownership_percentage}%</TableCell><TableCell>{item.is_reserved ? <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">Reserved</Badge> : item.released_at ? <Badge variant="outline">Released</Badge> : <Badge variant="outline">Draft</Badge>}</TableCell></TableRow>)}</TableBody></Table></div>
+          <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead className="pl-6">Member</TableHead><TableHead>Commitment</TableHead><TableHead>Cash / units reserved</TableHead><TableHead>Planned ownership</TableHead><TableHead>Reservation</TableHead></TableRow></TableHeader><TableBody>{asset.commitments?.map((item) => <TableRow key={item.id}><TableCell className="pl-6 font-medium">{item.member.full_name}</TableCell><TableCell className="font-mono tabular-nums">{formatRwf(item.amount)}</TableCell><TableCell className="font-mono tabular-nums">{formatRwf(item.reserved_cash)} / {Number(item.reserved_units).toLocaleString("en-RW", { maximumFractionDigits: 4 })}</TableCell><TableCell className="font-mono tabular-nums">{item.ownership_percentage}%</TableCell><TableCell>{item.is_reserved ? <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">Reserved</Badge> : item.redeemed_at ? <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">Redeemed</Badge> : item.released_at ? <Badge variant="outline">Released</Badge> : <Badge variant="outline">Draft</Badge>}</TableCell></TableRow>)}</TableBody></Table></div>
         </section>
       ) : null}
     </div>

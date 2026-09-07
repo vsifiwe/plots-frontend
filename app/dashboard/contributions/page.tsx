@@ -116,6 +116,17 @@ function StatusBadge({ contribution }: { contribution: Contribution }) {
   )
 }
 
+function RNITStatusBadge({ contribution }: { contribution: Contribution }) {
+  const labels = {
+    pending_cash: "Pending RNIT purchase",
+    invested: "Invested in RNIT",
+    purchase_reversed: "Purchase reversed",
+  } as const
+  const isInvested = contribution.rnit_status === "invested"
+
+  return <Badge variant="outline" className={isInvested ? "border-primary/25 bg-primary/10 text-primary" : "border-muted-foreground/20 bg-muted text-muted-foreground"}>{labels[contribution.rnit_status]}</Badge>
+}
+
 function RecordContributionDrawer({
   members,
   isLoadingMembers,
@@ -760,6 +771,7 @@ export default function ContributionsPage() {
                     {isSteward ? <TableHead>Member</TableHead> : null}
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>RNIT</TableHead>
                     {isSteward ? (
                       <TableHead>Internal reference</TableHead>
                     ) : null}
@@ -798,6 +810,7 @@ export default function ContributionsPage() {
                       <TableCell>
                         <StatusBadge contribution={contribution} />
                       </TableCell>
+                      <TableCell><RNITStatusBadge contribution={contribution} /></TableCell>
                       {isSteward ? (
                         <TableCell className="max-w-xs truncate text-muted-foreground">
                           {contribution.note || "—"}
@@ -859,6 +872,7 @@ export default function ContributionsPage() {
                   >
                     {formatRwf(contribution.amount)}
                   </p>
+                  <div><RNITStatusBadge contribution={contribution} /></div>
                   {isSteward && contribution.note ? (
                     <p className="text-sm leading-5 text-muted-foreground">
                       {contribution.note}

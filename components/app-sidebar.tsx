@@ -33,7 +33,7 @@ import type { Member } from "@/lib/auth"
 
 const memberTools = [
   { title: "Overview", icon: LayoutDashboardIcon, href: "/dashboard" },
-  { title: "Savings", icon: HandCoinsIcon },
+  { title: "Savings", icon: HandCoinsIcon, href: "/dashboard/savings" },
   {
     title: "Contributions",
     icon: ReceiptTextIcon,
@@ -89,7 +89,7 @@ export function AppSidebar({
             <SidebarMenu>
               {memberTools.map((item) => {
                 const Icon = item.icon
-                const isActive = item.href === pathname
+                const isActive = item.href === pathname || (item.href === "/dashboard/assets" && pathname.startsWith("/dashboard/assets"))
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton

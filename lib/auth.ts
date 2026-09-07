@@ -24,6 +24,10 @@ export type NewMember = {
 }
 
 export type ContributionStatus = "recorded" | "voided"
+export type ContributionRnitStatus =
+  | "pending_cash"
+  | "invested"
+  | "purchase_reversed"
 
 export type ContributionMember = {
   id: number
@@ -42,6 +46,7 @@ export type Contribution = {
   voided_at: string | null
   void_reason?: string | null
   voided_by?: ContributionMember | null
+  rnit_status: ContributionRnitStatus
 }
 
 export type PaginatedContributions = {
@@ -75,6 +80,12 @@ export type AssetCommitment = {
   reserved_at: string | null
   released_at: string | null
   release_reason: string
+  reserved_cash: number
+  reserved_units: string
+  reservation_nav: string | null
+  redeemed_at: string | null
+  redemption_nav: string | null
+  live_reserved_value: number
 }
 
 export type AssetFundingIssue =
@@ -89,6 +100,10 @@ export type AssetFundingIssue =
       member: AssetCommitmentMember
       required: number
       available_balance: number
+    }
+  | {
+      type: "nav_required"
+      message: string
     }
 
 export type Asset = {
@@ -107,6 +122,53 @@ export type Asset = {
   cancelled_at: string | null
   cancellation_reason?: string
   created_as_draft?: boolean
+}
+
+export type RNITNav = {
+  id: number
+  as_of_date: string
+  nav_per_unit: string
+  recorded_by: ContributionMember
+  created_at: string
+}
+
+export type RNITPurchase = {
+  id: number
+  contribution_id: number
+  member: ContributionMember
+  purchased_on: string
+  nav_per_unit: string
+  units: string
+  status: "invested" | "reversed"
+  created_at: string
+  reversed_at: string | null
+  reversal_reason: string
+}
+
+export type SavingsPosition = {
+  pending_cash: number
+  units_held: string
+  available_cash: number
+  available_units: string
+  reserved_cash: number
+  reserved_units: string
+  reserved_value: number
+  latest_nav: { as_of_date: string; nav_per_unit: string } | null
+  rnit_value: number
+  current_value: number
+  available_value: number
+  unrealized_growth: number
+}
+
+export type SavingsSummary = {
+  member: SavingsPosition
+  collective?: {
+    pending_cash: number
+    rnit_value: number
+    current_value: number
+    reserved_value: number
+    members: number
+  }
 }
 
 export type AssetCommitmentInput = {
@@ -400,6 +462,80 @@ export async function voidContribution(id: number, reason: string) {
   return (await response.json()) as Contribution
 }
 
+export async function getSavingsSummary() {
+  const response = await authenticatedFetch("/api/savings/summary/")
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to load your RNIT position.")
+  }
+  return (await response.json()) as SavingsSummary
+}
+
+export async function listRNITNavs() {
+  const response = await authenticatedFetch("/api/savings/navs/")
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to load RNIT NAV history.")
+  }
+  return (await response.json()) as RNITNav[]
+}
+
+export async function createRNITNav(nav: { as_of_date: string; nav_per_unit: string }) {
+  const response = await authenticatedFetch("/api/savings/navs/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(nav),
+  })
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to record this RNIT NAV.")
+  }
+  return (await response.json()) as RNITNav
+}
+
+export async function listPendingRNITContributions() {
+  const response = await authenticatedFetch("/api/savings/pending-contributions/")
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to load pending contributions.")
+  }
+  return (await response.json()) as Contribution[]
+}
+
+export async function listRNITPurchases() {
+  const response = await authenticatedFetch("/api/savings/purchases/")
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to load RNIT purchase history.")
+  }
+  return (await response.json()) as RNITPurchase[]
+}
+
+export async function purchaseContributionRNIT(
+  contributionId: number,
+  purchase: { purchased_on: string; nav_id: number }
+) {
+  const response = await authenticatedFetch(
+    `/api/savings/contributions/${contributionId}/purchase/`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(purchase),
+    }
+  )
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to record this RNIT purchase.")
+  }
+  return (await response.json()) as RNITPurchase
+}
+
+export async function reverseRNITPurchase(purchaseId: number, reason: string) {
+  const response = await authenticatedFetch(`/api/savings/purchases/${purchaseId}/reverse/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to reverse this RNIT purchase.")
+  }
+  return (await response.json()) as RNITPurchase
+}
+
 export async function listAssets() {
   const response = await authenticatedFetch("/api/assets/")
   if (!response.ok) {
@@ -468,6 +604,18 @@ export async function cancelAsset(id: number, reason: string) {
   })
   if (!response.ok) {
     throw await errorFromResponse(response, "Unable to cancel this asset.")
+  }
+  return (await response.json()) as Asset
+}
+
+export async function reopenAsset(id: number, reason: string) {
+  const response = await authenticatedFetch(`/api/assets/${id}/reopen/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to reopen this asset.")
   }
   return (await response.json()) as Asset
 }
