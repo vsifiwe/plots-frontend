@@ -58,6 +58,75 @@ export type NewContribution = {
   note?: string
 }
 
+export type AssetStatus = "draft" | "open" | "acquired" | "cancelled"
+
+export type AssetCommitmentMember = {
+  id: number
+  full_name: string
+}
+
+export type AssetCommitment = {
+  id: number
+  member: AssetCommitmentMember
+  amount: number
+  ownership_percentage: number
+  is_reserved: boolean
+  created_at: string
+  reserved_at: string | null
+  released_at: string | null
+  release_reason: string
+}
+
+export type AssetFundingIssue =
+  | {
+      type: "cost_mismatch"
+      message: string
+      committed_total: number
+      total_cost: number
+    }
+  | {
+      type: "insufficient_balance"
+      member: AssetCommitmentMember
+      required: number
+      available_balance: number
+    }
+
+export type Asset = {
+  id: number
+  title: string
+  description: string
+  total_cost: number
+  status: AssetStatus
+  total_committed: number
+  total_reserved: number
+  your_commitment: AssetCommitment | null
+  commitments?: AssetCommitment[]
+  funding_issues?: AssetFundingIssue[]
+  created_at: string
+  updated_at: string
+  cancelled_at: string | null
+  cancellation_reason?: string
+  created_as_draft?: boolean
+}
+
+export type AssetCommitmentInput = {
+  member: number
+  amount: number
+}
+
+export type NewAsset = {
+  title: string
+  description?: string
+  total_cost: number
+  commitments: AssetCommitmentInput[]
+}
+
+export type MemberAvailableBalance = {
+  id: number
+  full_name: string
+  available_balance: number
+}
+
 type StoredSession = {
   access: string
   refresh: string
@@ -329,6 +398,86 @@ export async function voidContribution(id: number, reason: string) {
     throw await errorFromResponse(response, "Unable to void this contribution.")
   }
   return (await response.json()) as Contribution
+}
+
+export async function listAssets() {
+  const response = await authenticatedFetch("/api/assets/")
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to load assets.")
+  }
+  return (await response.json()) as Asset[]
+}
+
+export async function getAsset(id: number) {
+  const response = await authenticatedFetch(`/api/assets/${id}/`)
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to load this asset.")
+  }
+  return (await response.json()) as Asset
+}
+
+export async function createAsset(asset: NewAsset) {
+  const response = await authenticatedFetch("/api/assets/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(asset),
+  })
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to create this asset.")
+  }
+  return (await response.json()) as Asset
+}
+
+export async function updateAsset(id: number, asset: NewAsset) {
+  const response = await authenticatedFetch(`/api/assets/${id}/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(asset),
+  })
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to update this draft.")
+  }
+  return (await response.json()) as Asset
+}
+
+export async function openAsset(id: number) {
+  const response = await authenticatedFetch(`/api/assets/${id}/open/`, {
+    method: "POST",
+  })
+  if (!response.ok) {
+    throw await errorFromResponse(response, "This asset is not ready to open.")
+  }
+  return (await response.json()) as Asset
+}
+
+export async function acquireAsset(id: number) {
+  const response = await authenticatedFetch(`/api/assets/${id}/acquire/`, {
+    method: "POST",
+  })
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to mark this asset acquired.")
+  }
+  return (await response.json()) as Asset
+}
+
+export async function cancelAsset(id: number, reason: string) {
+  const response = await authenticatedFetch(`/api/assets/${id}/cancel/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  })
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to cancel this asset.")
+  }
+  return (await response.json()) as Asset
+}
+
+export async function listAssetAvailableBalances() {
+  const response = await authenticatedFetch("/api/assets/available-balances/")
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to load available balances.")
+  }
+  return (await response.json()) as MemberAvailableBalance[]
 }
 
 export async function signOut() {

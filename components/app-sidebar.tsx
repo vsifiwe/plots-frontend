@@ -11,6 +11,7 @@ import {
   LayoutDashboardIcon,
   ReceiptTextIcon,
   SproutIcon,
+  LandmarkIcon,
   UsersRoundIcon,
   VoteIcon,
 } from "lucide-react"
@@ -38,6 +39,7 @@ const memberTools = [
     icon: ReceiptTextIcon,
     href: "/dashboard/contributions",
   },
+  { title: "Assets", icon: LandmarkIcon, href: "/dashboard/assets" },
   { title: "Investment cycle", icon: VoteIcon },
   { title: "Proposals", icon: ChartNoAxesCombinedIcon },
   { title: "Members", icon: UsersRoundIcon, href: "/dashboard/members" },
