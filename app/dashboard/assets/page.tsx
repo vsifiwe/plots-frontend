@@ -12,7 +12,7 @@ import {
 import { AssetCommitmentDrawer } from "@/components/asset-commitment-drawer"
 import { useDashboardMember } from "@/components/member-dashboard-shell"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Table,
   TableBody,
@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { ApiError, listAssets, type Asset, type AssetStatus } from "@/lib/auth"
+import { cn } from "@/lib/utils"
 
 const statusLabel: Record<AssetStatus, string> = {
   draft: "Draft",
@@ -199,8 +200,10 @@ export default function AssetsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="pl-6">Asset</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Cost</TableHead>
+                    <TableHead>Current value</TableHead>
                     <TableHead>Coverage</TableHead>
                     <TableHead>Your commitment</TableHead>
                     <TableHead className="pr-6 text-right">Details</TableHead>
@@ -215,16 +218,24 @@ export default function AssetsPage() {
                         </Link>
                         <p className="mt-1 text-xs text-muted-foreground">Created {formatDate(asset.created_at)}</p>
                       </TableCell>
+                      <TableCell><Badge variant="outline">{asset.asset_type === "variable" ? "Variable" : "Fixed"}</Badge></TableCell>
                       <TableCell><AssetStatusBadge status={asset.status} /></TableCell>
                       <TableCell className="font-mono font-medium tabular-nums">{formatRwf(asset.total_cost)}</TableCell>
+                      <TableCell className="font-mono tabular-nums">{asset.current_value === null ? "—" : formatRwf(asset.current_value)}</TableCell>
                       <TableCell><Coverage asset={asset} /></TableCell>
                       <TableCell className="font-mono tabular-nums">
                         {asset.your_commitment ? formatRwf(asset.your_commitment.amount) : "—"}
                       </TableCell>
                       <TableCell className="pr-6 text-right">
-                        <Button size="sm" variant="ghost" render={<Link href={`/dashboard/assets/${asset.id}`} />}>
+                        <Link
+                          href={`/dashboard/assets/${asset.id}`}
+                          className={cn(
+                            buttonVariants({ variant: "ghost", size: "sm" }),
+                            "inline-flex"
+                          )}
+                        >
                           View <ArrowUpRightIcon aria-hidden="true" />
-                        </Button>
+                        </Link>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -237,13 +248,13 @@ export default function AssetsPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-medium">{asset.title}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Created {formatDate(asset.created_at)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{asset.asset_type === "variable" ? "Variable asset" : "Fixed asset"} · Created {formatDate(asset.created_at)}</p>
                     </div>
                     <AssetStatusBadge status={asset.status} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div><p className="text-xs text-muted-foreground">Total cost</p><p className="mt-1 font-mono text-sm font-medium tabular-nums">{formatRwf(asset.total_cost)}</p></div>
-                    <div><p className="text-xs text-muted-foreground">Your commitment</p><p className="mt-1 font-mono text-sm font-medium tabular-nums">{asset.your_commitment ? formatRwf(asset.your_commitment.amount) : "—"}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Current value</p><p className="mt-1 font-mono text-sm font-medium tabular-nums">{asset.current_value === null ? "—" : formatRwf(asset.current_value)}</p></div>
                   </div>
                   <Coverage asset={asset} />
                 </Link>

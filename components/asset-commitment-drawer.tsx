@@ -35,6 +35,7 @@ import {
   listAssetAvailableBalances,
   updateAsset,
   type Asset,
+  type AssetType,
   type MemberAvailableBalance,
   type NewAsset,
 } from "@/lib/auth"
@@ -47,6 +48,7 @@ type CommitmentRow = {
 
 type AssetForm = {
   title: string
+  asset_type: AssetType
   description: string
   total_cost: string
   commitments: CommitmentRow[]
@@ -59,6 +61,7 @@ function rowKey() {
 function emptyForm(): AssetForm {
   return {
     title: "",
+    asset_type: "fixed",
     description: "",
     total_cost: "",
     commitments: [{ key: rowKey(), member: "", amount: "" }],
@@ -68,6 +71,7 @@ function emptyForm(): AssetForm {
 function formFromAsset(asset: Asset): AssetForm {
   return {
     title: asset.title,
+    asset_type: asset.asset_type,
     description: asset.description,
     total_cost: String(asset.total_cost),
     commitments:
@@ -202,6 +206,7 @@ export function AssetCommitmentDrawer({
 
     const payload: NewAsset = {
       title: form.title.trim(),
+      asset_type: form.asset_type,
       description: form.description.trim(),
       total_cost: totalCost,
       commitments: form.commitments.map((commitment) => ({
@@ -291,6 +296,29 @@ export function AssetCommitmentDrawer({
               {errors.title ? (
                 <p className="text-sm text-destructive">{errors.title}</p>
               ) : null}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="asset-type">Asset type</Label>
+              <Select
+                value={form.asset_type}
+                onValueChange={(value) =>
+                  updateForm("asset_type", (value ?? "fixed") as AssetType)
+                }
+              >
+                <SelectTrigger id="asset-type" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fixed">Fixed asset</SelectItem>
+                  <SelectItem value="variable">Variable asset</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs leading-5 text-muted-foreground">
+                {form.asset_type === "variable"
+                  ? "For shares and other unit holdings. Record actual units and the initial unit price when acquired, then add price updates over time."
+                  : "For land and other holdings valued only after a professional evaluation."}
+              </p>
             </div>
 
             <div className="grid gap-2">

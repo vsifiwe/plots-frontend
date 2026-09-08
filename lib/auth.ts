@@ -64,6 +64,7 @@ export type NewContribution = {
 }
 
 export type AssetStatus = "draft" | "open" | "acquired" | "cancelled"
+export type AssetType = "fixed" | "variable"
 
 export type AssetCommitmentMember = {
   id: number
@@ -86,6 +87,17 @@ export type AssetCommitment = {
   redeemed_at: string | null
   redemption_nav: string | null
   live_reserved_value: number
+  current_value: number | null
+  growth: number | null
+}
+
+export type AssetValuation = {
+  id: number
+  as_of_date: string
+  total_value: string | null
+  unit_price: string | null
+  recorded_by: AssetCommitmentMember
+  created_at: string
 }
 
 export type AssetFundingIssue =
@@ -111,12 +123,22 @@ export type Asset = {
   title: string
   description: string
   total_cost: number
+  asset_type: AssetType
   status: AssetStatus
   total_committed: number
   total_reserved: number
   your_commitment: AssetCommitment | null
   commitments?: AssetCommitment[]
   funding_issues?: AssetFundingIssue[]
+  acquired_at: string | null
+  acquired_units: string | null
+  acquisition_unit_price: string | null
+  current_value: number | null
+  growth: number | null
+  growth_percentage: number | null
+  latest_valuation_date: string | null
+  latest_unit_price: string | null
+  valuations?: AssetValuation[]
   created_at: string
   updated_at: string
   cancelled_at: string | null
@@ -178,9 +200,21 @@ export type AssetCommitmentInput = {
 
 export type NewAsset = {
   title: string
+  asset_type: AssetType
   description?: string
   total_cost: number
   commitments: AssetCommitmentInput[]
+}
+
+export type AssetAcquisition = {
+  units?: string
+  unit_price?: string
+}
+
+export type NewAssetValuation = {
+  as_of_date: string
+  total_value?: string
+  unit_price?: string
 }
 
 export type MemberAvailableBalance = {
@@ -586,14 +620,36 @@ export async function openAsset(id: number) {
   return (await response.json()) as Asset
 }
 
-export async function acquireAsset(id: number) {
+export async function acquireAsset(id: number, acquisition: AssetAcquisition = {}) {
   const response = await authenticatedFetch(`/api/assets/${id}/acquire/`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(acquisition),
   })
   if (!response.ok) {
     throw await errorFromResponse(response, "Unable to mark this asset acquired.")
   }
   return (await response.json()) as Asset
+}
+
+export async function listAssetValuations(id: number) {
+  const response = await authenticatedFetch(`/api/assets/${id}/valuations/`)
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to load valuation history.")
+  }
+  return (await response.json()) as AssetValuation[]
+}
+
+export async function createAssetValuation(id: number, valuation: NewAssetValuation) {
+  const response = await authenticatedFetch(`/api/assets/${id}/valuations/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(valuation),
+  })
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to record this valuation.")
+  }
+  return (await response.json()) as AssetValuation
 }
 
 export async function cancelAsset(id: number, reason: string) {
