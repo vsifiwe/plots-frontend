@@ -25,9 +25,7 @@ export type NewMember = {
 
 export type ContributionStatus = "recorded" | "voided"
 export type ContributionRnitStatus =
-  | "pending_cash"
-  | "invested"
-  | "purchase_reversed"
+  "pending_cash" | "invested" | "purchase_reversed"
 
 export type ContributionMember = {
   id: number
@@ -191,6 +189,74 @@ export type SavingsSummary = {
     reserved_value: number
     members: number
   }
+}
+
+export type OverviewAllocationKey =
+  "pending_cash" | "rnit" | "fixed_assets" | "variable_assets"
+
+export type OverviewSegmentKey =
+  "cornerstone" | "growth" | "emerging" | "legacy"
+
+export type OverviewSummary = {
+  generated_on: string
+  valuation_as_of: string | null
+  portfolio: {
+    total_value: number
+    allocation: Array<{
+      key: OverviewAllocationKey
+      label: string
+      value: number
+      percentage: number
+    }>
+  }
+  membership: {
+    total_members: number
+    active_members: number
+    inactive_members: number
+    average_active_portfolio: number
+    top_five_concentration: number
+  }
+  contributions: {
+    current_window: {
+      month: string
+      active_members: number
+      contributing_members: number
+      health_percentage: number
+      healthy_threshold: number
+      is_healthy: boolean
+    }
+    history: Array<{
+      month: string
+      total_received: number
+      contributing_members: number
+    }>
+  }
+  holdings: Array<{
+    id: number
+    title: string
+    asset_type: AssetType
+    cost: number
+    current_value: number
+    growth: number
+    growth_percentage: number
+    acquired_on: string | null
+    latest_valuation_date: string | null
+    acquisition_units: string | null
+    acquisition_unit_price: number | null
+    current_unit_price: number | null
+    unit_price_change: number | null
+    unit_price_change_percentage: number | null
+    rnit_benchmark_percentage: number | null
+  }>
+  segments: Array<{
+    key: OverviewSegmentKey
+    label: string
+    range_label: string
+    member_count: number
+    total_value: number
+    percentage: number
+    members: Array<{ id: number; full_name: string }>
+  }>
 }
 
 export type AssetCommitmentInput = {
@@ -499,9 +565,23 @@ export async function voidContribution(id: number, reason: string) {
 export async function getSavingsSummary() {
   const response = await authenticatedFetch("/api/savings/summary/")
   if (!response.ok) {
-    throw await errorFromResponse(response, "Unable to load your RNIT position.")
+    throw await errorFromResponse(
+      response,
+      "Unable to load your RNIT position."
+    )
   }
   return (await response.json()) as SavingsSummary
+}
+
+export async function getOverviewSummary() {
+  const response = await authenticatedFetch("/api/overview/")
+  if (!response.ok) {
+    throw await errorFromResponse(
+      response,
+      "Unable to load the collective overview."
+    )
+  }
+  return (await response.json()) as OverviewSummary
 }
 
 export async function listRNITNavs() {
@@ -512,7 +592,10 @@ export async function listRNITNavs() {
   return (await response.json()) as RNITNav[]
 }
 
-export async function createRNITNav(nav: { as_of_date: string; nav_per_unit: string }) {
+export async function createRNITNav(nav: {
+  as_of_date: string
+  nav_per_unit: string
+}) {
   const response = await authenticatedFetch("/api/savings/navs/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -525,9 +608,14 @@ export async function createRNITNav(nav: { as_of_date: string; nav_per_unit: str
 }
 
 export async function listPendingRNITContributions() {
-  const response = await authenticatedFetch("/api/savings/pending-contributions/")
+  const response = await authenticatedFetch(
+    "/api/savings/pending-contributions/"
+  )
   if (!response.ok) {
-    throw await errorFromResponse(response, "Unable to load pending contributions.")
+    throw await errorFromResponse(
+      response,
+      "Unable to load pending contributions."
+    )
   }
   return (await response.json()) as Contribution[]
 }
@@ -535,7 +623,10 @@ export async function listPendingRNITContributions() {
 export async function listRNITPurchases() {
   const response = await authenticatedFetch("/api/savings/purchases/")
   if (!response.ok) {
-    throw await errorFromResponse(response, "Unable to load RNIT purchase history.")
+    throw await errorFromResponse(
+      response,
+      "Unable to load RNIT purchase history."
+    )
   }
   return (await response.json()) as RNITPurchase[]
 }
@@ -553,19 +644,28 @@ export async function purchaseContributionRNIT(
     }
   )
   if (!response.ok) {
-    throw await errorFromResponse(response, "Unable to record this RNIT purchase.")
+    throw await errorFromResponse(
+      response,
+      "Unable to record this RNIT purchase."
+    )
   }
   return (await response.json()) as RNITPurchase
 }
 
 export async function reverseRNITPurchase(purchaseId: number, reason: string) {
-  const response = await authenticatedFetch(`/api/savings/purchases/${purchaseId}/reverse/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reason }),
-  })
+  const response = await authenticatedFetch(
+    `/api/savings/purchases/${purchaseId}/reverse/`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    }
+  )
   if (!response.ok) {
-    throw await errorFromResponse(response, "Unable to reverse this RNIT purchase.")
+    throw await errorFromResponse(
+      response,
+      "Unable to reverse this RNIT purchase."
+    )
   }
   return (await response.json()) as RNITPurchase
 }
@@ -620,14 +720,20 @@ export async function openAsset(id: number) {
   return (await response.json()) as Asset
 }
 
-export async function acquireAsset(id: number, acquisition: AssetAcquisition = {}) {
+export async function acquireAsset(
+  id: number,
+  acquisition: AssetAcquisition = {}
+) {
   const response = await authenticatedFetch(`/api/assets/${id}/acquire/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(acquisition),
   })
   if (!response.ok) {
-    throw await errorFromResponse(response, "Unable to mark this asset acquired.")
+    throw await errorFromResponse(
+      response,
+      "Unable to mark this asset acquired."
+    )
   }
   return (await response.json()) as Asset
 }
@@ -640,7 +746,10 @@ export async function listAssetValuations(id: number) {
   return (await response.json()) as AssetValuation[]
 }
 
-export async function createAssetValuation(id: number, valuation: NewAssetValuation) {
+export async function createAssetValuation(
+  id: number,
+  valuation: NewAssetValuation
+) {
   const response = await authenticatedFetch(`/api/assets/${id}/valuations/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -679,7 +788,10 @@ export async function reopenAsset(id: number, reason: string) {
 export async function listAssetAvailableBalances() {
   const response = await authenticatedFetch("/api/assets/available-balances/")
   if (!response.ok) {
-    throw await errorFromResponse(response, "Unable to load available balances.")
+    throw await errorFromResponse(
+      response,
+      "Unable to load available balances."
+    )
   }
   return (await response.json()) as MemberAvailableBalance[]
 }

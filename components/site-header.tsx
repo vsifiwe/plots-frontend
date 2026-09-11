@@ -16,22 +16,20 @@ export function SiteHeader() {
     ? "Member directory"
     : isContributions
       ? "Contribution ledger"
-    : isAssets
+      : isAssets
         ? "Collective assets"
         : isSavings
           ? "RNIT savings"
-      : "Collective overview"
+          : "Collective overview"
   const description = isMemberDirectory
     ? "A private view of everyone in the collective"
     : isContributions
       ? "Recorded member contributions to the collective"
-    : isAssets
+      : isAssets
         ? "Assets covered by member contribution commitments"
         : isSavings
           ? "Member-owned RNIT units and current value"
-      : "A shared snapshot for Plots & Prosper members"
-  const isPrivate = isMemberDirectory || isContributions || isAssets || isSavings
-
+          : "A shared snapshot for Plots & Prosper members"
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
@@ -46,15 +44,9 @@ export function SiteHeader() {
             {description}
           </p>
         </div>
-        {isPrivate ? (
-          <span className="ml-auto rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-primary uppercase">
-            Private
-          </span>
-        ) : (
-          <span className="ml-auto rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-primary uppercase">
-            Demo data
-          </span>
-        )}
+        <span className="ml-auto rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-primary uppercase">
+          Private
+        </span>
       </div>
     </header>
   )
