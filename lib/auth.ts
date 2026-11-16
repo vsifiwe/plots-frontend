@@ -152,6 +152,8 @@ export type RNITNav = {
   created_at: string
 }
 
+export type RNITNavValues = Pick<RNITNav, "as_of_date" | "nav_per_unit">
+
 export type RNITPurchase = {
   id: number
   contribution_id: number
@@ -592,10 +594,17 @@ export async function listRNITNavs() {
   return (await response.json()) as RNITNav[]
 }
 
-export async function createRNITNav(nav: {
-  as_of_date: string
-  nav_per_unit: string
-}) {
+export async function listPublishedRNITNavs(signal: AbortSignal) {
+  const response = await authenticatedFetch("/api/savings/navs/published/", {
+    signal,
+  })
+  if (!response.ok) {
+    throw await errorFromResponse(response, "Unable to load published RNIT NAVs.")
+  }
+  return (await response.json()) as RNITNavValues[]
+}
+
+export async function createRNITNav(nav: RNITNavValues) {
   const response = await authenticatedFetch("/api/savings/navs/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

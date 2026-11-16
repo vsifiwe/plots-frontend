@@ -48,12 +48,14 @@ import {
   createRNITNav,
   getSavingsSummary,
   listPendingRNITContributions,
+  listPublishedRNITNavs,
   listRNITPurchases,
   listRNITNavs,
   purchaseContributionRNIT,
   reverseRNITPurchase,
   type Contribution,
   type RNITNav,
+  type RNITNavValues,
   type RNITPurchase,
   type SavingsSummary,
 } from "@/lib/auth"
@@ -78,46 +80,179 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-RW", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${value}T12:00:00`))
 }
 
-function NavDrawer({ onSaved }: { onSaved: () => Promise<void> }) {
+function NavDrawer({
+  navs,
+  onSaved,
+}: {
+  navs: RNITNav[]
+  onSaved: () => Promise<void>
+}) {
   const [open, setOpen] = useState(false)
-  const [date, setDate] = useState(todayValue())
-  const [nav, setNav] = useState("")
+  const [publishedNavs, setPublishedNavs] = useState<
+    RNITNavValues[] | "unavailable" | null
+  >(null)
+  const [selection, setSelection] = useState<string | null>(null)
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
 
+  const recordedDates = new Set(navs.map((entry) => entry.as_of_date))
+  const options = Array.isArray(publishedNavs) ? publishedNavs : []
+  const items = options.map((entry) => ({
+    value: entry.as_of_date,
+    label: `${formatDate(entry.as_of_date)} · ${entry.nav_per_unit} RWF${recordedDates.has(entry.as_of_date) ? " (recorded)" : ""}`,
+  }))
+  items.push({ value: "custom", label: "Enter custom NAV" })
+  const custom = selection === "custom"
+  const selectedNav = options.find((entry) => entry.as_of_date === selection)
+
+  useEffect(() => {
+    if (!open) return
+
+    const controller = new AbortController()
+    async function loadPublishedNavs() {
+      try {
+        const entries = await listPublishedRNITNavs(controller.signal)
+        if (!controller.signal.aborted) setPublishedNavs(entries)
+      } catch {
+        if (!controller.signal.aborted) setPublishedNavs("unavailable")
+      }
+    }
+
+    void loadPublishedNavs()
+    return () => controller.abort()
+  }, [open])
+
+  function changeOpen(nextOpen: boolean) {
+    if (nextOpen) {
+      setPublishedNavs(null)
+      setSelection(null)
+      setError("")
+    }
+    setOpen(nextOpen)
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!date || !/^\d+(\.\d+)?$/.test(nav) || Number(nav) <= 0) {
+    const form = new FormData(event.currentTarget)
+    const values = custom
+      ? {
+          as_of_date: String(form.get("as_of_date") ?? ""),
+          nav_per_unit: String(form.get("nav_per_unit") ?? ""),
+        }
+      : selectedNav
+    if (!values) return
+    if (
+      !values.as_of_date ||
+      !/^\d+(\.\d+)?$/.test(values.nav_per_unit) ||
+      Number(values.nav_per_unit) <= 0
+    ) {
       setError("Enter a valid dated RNIT NAV greater than zero.")
       return
     }
     setSaving(true)
     setError("")
     try {
-      await createRNITNav({ as_of_date: date, nav_per_unit: nav })
+      await createRNITNav(values)
       await onSaved()
-      toast.add({ type: "success", title: "RNIT NAV recorded", description: "Current savings values now use this latest NAV." })
-      setNav("")
+      toast.add({ type: "success", title: "RNIT NAV recorded" })
       setOpen(false)
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : "We could not record this NAV. Please try again.")
+      setError(
+        caught instanceof ApiError
+          ? caught.message
+          : "We could not record this NAV. Please try again."
+      )
     } finally {
       setSaving(false)
     }
   }
 
-  return <Drawer open={open} onOpenChange={setOpen}>
-    <DrawerTrigger render={<Button><PlusIcon aria-hidden="true" />Record NAV</Button>} />
-    <DrawerContent className="sm:[--drawer-content-width:34rem] sm:max-w-none">
-      <DrawerHeader><DrawerTitle>Record RNIT NAV</DrawerTitle><DrawerDescription>Enter the published value of one RNIT unit. This updates live valuations without altering past purchases.</DrawerDescription></DrawerHeader>
-      <form onSubmit={submit} className="grid gap-5 px-5 pb-4">
-        <div className="grid gap-2"><Label htmlFor="nav-date">NAV date</Label><Input id="nav-date" type="date" max={todayValue()} value={date} onChange={(event) => setDate(event.target.value)} /></div>
-        <div className="grid gap-2"><Label htmlFor="nav-price">NAV per unit (RWF)</Label><Input id="nav-price" inputMode="decimal" placeholder="e.g. 118.42" value={nav} onChange={(event) => setNav(event.target.value)} aria-invalid={Boolean(error)} /></div>
-        {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
-        <DrawerFooter><Button type="submit" disabled={saving}>{saving ? <LoaderCircleIcon className="animate-spin" /> : null}{saving ? "Recording..." : "Record NAV"}</Button><DrawerClose render={<Button variant="outline" type="button">Cancel</Button>} /></DrawerFooter>
-      </form>
-    </DrawerContent>
-  </Drawer>
+  return (
+    <Drawer open={open} onOpenChange={changeOpen}>
+      <DrawerTrigger
+        render={<Button><PlusIcon aria-hidden="true" />Record NAV</Button>}
+      />
+      <DrawerContent className="sm:[--drawer-content-width:34rem] sm:max-w-none">
+        <DrawerHeader>
+          <DrawerTitle>Record RNIT NAV</DrawerTitle>
+          <DrawerDescription>
+            Choose a recent published NAV or enter one manually.
+          </DrawerDescription>
+        </DrawerHeader>
+        <form onSubmit={submit} className="grid gap-5 px-5 pb-4">
+          <div className="grid gap-2">
+            <Label htmlFor="nav-selection">NAV to record</Label>
+            <Select
+              items={items}
+              value={selection}
+              onValueChange={(value) => {
+                setSelection(value)
+                setError("")
+              }}
+              disabled={saving}
+            >
+              <SelectTrigger id="nav-selection" className="w-full">
+                <SelectValue placeholder="Choose a NAV" />
+              </SelectTrigger>
+              <SelectContent>
+                {items.map(({ value, label }) => (
+                  <SelectItem
+                    key={value}
+                    value={value}
+                    disabled={recordedDates.has(value)}
+                  >
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {options.length === 0 ? (
+              <p className="text-sm text-muted-foreground" role="status">
+                {publishedNavs === null
+                  ? "Loading published NAVs…"
+                  : publishedNavs === "unavailable"
+                    ? "Published NAVs are unavailable. You can still enter a custom NAV."
+                    : "No published NAVs are available."}
+              </p>
+            ) : null}
+          </div>
+          <fieldset hidden={!custom} disabled={!custom || saving}>
+            <div className="grid gap-5">
+              <div className="grid gap-2">
+                <Label htmlFor="nav-date">NAV date</Label>
+                <Input
+                  id="nav-date"
+                  name="as_of_date"
+                  type="date"
+                  max={todayValue()}
+                  defaultValue={todayValue()}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="nav-price">NAV per unit (RWF)</Label>
+                <Input
+                  id="nav-price"
+                  name="nav_per_unit"
+                  inputMode="decimal"
+                  placeholder="e.g. 286.77"
+                  required
+                />
+              </div>
+            </div>
+          </fieldset>
+          {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
+          <DrawerFooter>
+            <Button type="submit" disabled={saving || (!custom && !selectedNav)}>
+              {saving ? <LoaderCircleIcon className="animate-spin" /> : null}
+              {saving ? "Recording..." : "Record NAV"}
+            </Button>
+            <DrawerClose render={<Button variant="outline" type="button">Cancel</Button>} />
+          </DrawerFooter>
+        </form>
+      </DrawerContent>
+    </Drawer>
+  )
 }
 
 function PurchaseDrawer({ contribution, navs, onSaved, onClose }: { contribution: Contribution | null; navs: RNITNav[]; onSaved: () => Promise<void>; onClose: () => void }) {
@@ -223,7 +358,7 @@ export default function SavingsPage() {
   ]
 
   return <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 md:gap-7 md:p-6">
-    <section className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">RNIT savings</p><h1 className="mt-1 text-3xl font-semibold tracking-[-0.05em]">Your member position</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Contributions remain as cash until a steward records their RNIT purchase. Values change only when a newer published NAV is recorded.</p></div>{isSteward ? <NavDrawer onSaved={load} /> : null}</section>
+    <section className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold tracking-[0.14em] text-primary uppercase">RNIT savings</p><h1 className="mt-1 text-3xl font-semibold tracking-[-0.05em]">Your member position</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">Contributions remain as cash until a steward records their RNIT purchase. Values change only when a newer published NAV is recorded.</p></div>{isSteward ? <NavDrawer navs={navs} onSaved={load} /> : null}</section>
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => { const Icon = card.icon; return <Card key={card.label} className="bg-linear-to-b from-primary/[0.06] to-card shadow-xs dark:from-primary/[0.09]"><CardHeader><div className="flex justify-between gap-3"><CardDescription>{card.label}</CardDescription><span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" /></span></div><CardTitle className="mt-4 text-2xl tabular-nums">{card.value}</CardTitle></CardHeader><CardContent className="mt-auto text-sm text-muted-foreground">{card.detail}</CardContent></Card> })}</div>
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(20rem,.75fr)]">
       <Card><CardHeader><CardTitle>RNIT value and growth</CardTitle><CardDescription>Unrealized change is based on the latest NAV and the average cost of your remaining units.</CardDescription></CardHeader><CardContent className="grid gap-5 sm:grid-cols-2"><div className="rounded-lg border bg-muted/30 p-4"><p className="text-xs font-medium text-muted-foreground">Latest NAV</p><p className="mt-2 text-xl font-semibold tabular-nums">{position.latest_nav ? `${Number(position.latest_nav.nav_per_unit).toLocaleString("en-RW", { maximumFractionDigits: 4 })} RWF` : "Not recorded"}</p><p className="mt-1 text-xs text-muted-foreground">{position.latest_nav ? `Published ${formatDate(position.latest_nav.as_of_date)}` : "A steward will add the first NAV."}</p></div><div className="rounded-lg border bg-muted/30 p-4"><p className="text-xs font-medium text-muted-foreground">Unrealized RNIT growth</p><p className={`mt-2 text-xl font-semibold tabular-nums ${position.unrealized_growth < 0 ? "text-destructive" : "text-primary"}`}>{position.latest_nav ? formatRwf(position.unrealized_growth) : "—"}</p><p className="mt-1 text-xs text-muted-foreground">This excludes pending cash and acquired assets.</p></div></CardContent></Card>
