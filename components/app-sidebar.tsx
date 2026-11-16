@@ -5,7 +5,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   BookOpenTextIcon,
-  ChartNoAxesCombinedIcon,
   CircleHelpIcon,
   HandCoinsIcon,
   LayoutDashboardIcon,
@@ -13,7 +12,6 @@ import {
   SproutIcon,
   LandmarkIcon,
   UsersRoundIcon,
-  VoteIcon,
 } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
@@ -40,8 +38,6 @@ const memberTools = [
     href: "/dashboard/contributions",
   },
   { title: "Assets", icon: LandmarkIcon, href: "/dashboard/assets" },
-  { title: "Investment cycle", icon: VoteIcon },
-  { title: "Proposals", icon: ChartNoAxesCombinedIcon },
   { title: "Members", icon: UsersRoundIcon, href: "/dashboard/members" },
 ]
 
@@ -89,27 +85,27 @@ export function AppSidebar({
             <SidebarMenu>
               {memberTools.map((item) => {
                 const Icon = item.icon
-                const isActive = item.href === pathname || (item.href === "/dashboard/assets" && pathname.startsWith("/dashboard/assets"))
+                const isCurrentPage = item.href === pathname
+                const isCurrentSection =
+                  item.href !== "/dashboard" &&
+                  pathname.startsWith(`${item.href}/`)
+                const current = isCurrentPage
+                  ? "page"
+                  : isCurrentSection
+                    ? "location"
+                    : undefined
+
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
-                      render={item.href ? <Link href={item.href} /> : undefined}
-                      isActive={isActive}
+                      render={<Link href={item.href} />}
+                      isActive={current !== undefined}
                       tooltip={item.title}
-                      aria-current={isActive ? "page" : undefined}
-                      className={
-                        !item.href
-                          ? "text-sidebar-foreground/70 cursor-default"
-                          : undefined
-                      }
+                      aria-current={current}
+                      className="data-active:bg-primary data-active:text-primary-foreground data-active:font-semibold data-active:hover:bg-primary data-active:hover:text-primary-foreground focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                       <Icon aria-hidden="true" />
                       <span>{item.title}</span>
-                      {!item.href && (
-                        <span className="text-sidebar-foreground/45 ml-auto text-[10px] font-medium">
-                          Soon
-                        </span>
-                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
